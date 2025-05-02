@@ -1,41 +1,45 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+
+    
+  
+from flask import Flask, request, jsonify
+from openai import OpenAI
 import os
-import openai
 from dotenv import load_dotenv
 
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
-app = FastAPI()
+app = Flask(__name__)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Inicializē jauno OpenAI klientu
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-@app.get("/")
-async def root():
-    return {"message": "DailySpark backend is running."}
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "DailySpark backend is running."})
 
-@app.post("/generate")
-async def generate_text(request: Request):
-    body = await request.json()
-    prompt = body.get("prompt")
-    
+@app.route("/generate", methods=["POST"])
+def generate():
+    data = request.get_json()
+
+    category = data.get("category")
+    prompt = data.get("prompt")
+
     if not prompt:
-        return {"error": "No prompt provided."}
+        return jsonify({"error": "No prompt provided."}), 400
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[
+                {"role": "system", "content": f"You are an assistant helping generate inspirational ideas for the '{category}' category."},
+                {"role": "user", "content": prompt}
+            ]
         )
-        generated_text = response.choices[0].message["content"]
-        return {"result": generated_text}
+        answer = response.choices[0].message.content.strip()
+        return jsonify({"response": answer})
+    
     except Exception as e:
-        return {"error": str(e)}
+        return jsonify({"error": str(e)}), 500
 
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
