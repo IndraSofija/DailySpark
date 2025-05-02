@@ -18,23 +18,23 @@ app.add_middleware(
 )
 
 @app.get("/")
-def read_root():
-    return {"message": "Backend is running."}
+async def root():
+    return {"message": "DailySpark backend is running."}
 
 @app.post("/generate")
 async def generate_text(request: Request):
     body = await request.json()
     prompt = body.get("prompt")
-
+    
     if not prompt:
-        return {"error": "No prompt provided"}
+        return {"error": "No prompt provided."}
 
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.8,
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}]
         )
-        return {"response": response.choices[0].message["content"].strip()}
+        generated_text = response.choices[0].message["content"]
+        return {"result": generated_text}
     except Exception as e:
         return {"error": str(e)}
